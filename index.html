@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dark Orbit">
+<title>DARK ORBIT: Ship Defense</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<div id="main-menu" class="overlay">
+<div class="panel">
+<h1 class="game-title"><span id="title-text"></span><span class="cursor">_</span></h1>
+<h2 id="title-sub" class="game-subtitle">SHIP DEFENSE</h2>
+<div class="highscore-box menu-item"><span>МАКСИМАЛЬНЫЙ СЧЁТ</span><span id="menu-highscore">0</span></div>
+<button id="btn-start" class="menu-btn primary menu-item">ИГРАТЬ</button>
+<button id="btn-skins" class="menu-btn menu-item">АНГАР (СКИНЫ)</button>
+<button id="btn-records" class="menu-btn menu-item">РЕКОРДЫ</button>
+<button id="btn-settings" class="menu-btn menu-item">НАСТРОЙКИ</button>
+<button id="btn-install" class="menu-btn install-btn hidden">⬇ УСТАНОВИТЬ ИГРУ</button>
+</div>
+</div>
+<div id="skins-menu" class="overlay hidden">
+<div class="panel wide">
+<h1 class="panel-title">АНГАР</h1>
+<div id="skin-grid" class="skin-grid"></div>
+<button id="btn-skins-back" class="menu-btn">НАЗАД</button>
+</div>
+</div>
+<div id="settings-menu" class="overlay hidden">
+<div class="panel">
+<h1 class="panel-title">НАСТРОЙКИ</h1>
+<div class="setting-col">
+<span>УПРАВЛЕНИЕ</span>
+<div id="ctrl-group" class="seg">
+<button data-ctrl="float">ПЛАВАЮЩИЙ</button>
+<button data-ctrl="fixed">ФИКСИРОВАННЫЙ</button>
+</div>
+</div>
+<div class="setting-row"><span>ЗВУКИ</span><input type="range" id="sfx-volume" class="vol-slider" min="0" max="100" value="80"></div>
+<div class="setting-row"><span>МУЗЫКА</span><input type="range" id="music-volume" class="vol-slider" min="0" max="100" value="50"></div>
+<div class="setting-row"><span>ВИБРАЦИЯ</span><button id="opt-vibro" class="toggle-btn">ВКЛ</button></div>
+<div class="setting-col">
+<span>СЛОЖНОСТЬ</span>
+<div id="diff-group" class="seg">
+<button data-diff="0">ЛЕГКО</button>
+<button data-diff="1">НОРМА</button>
+<button data-diff="2">СЛОЖНО</button>
+<button data-diff="3">ХАРДКОР</button>
+</div>
+</div>
+<button id="btn-settings-back" class="menu-btn">НАЗАД</button>
+</div>
+</div>
+<div id="records-menu" class="overlay hidden">
+<div class="panel">
+<h1 class="panel-title">ТОП-5 СМЕН</h1>
+<ol id="records-list" class="records"></ol>
+<button id="btn-records-back" class="menu-btn">НАЗАД</button>
+</div>
+</div>
+<div id="pause-menu" class="overlay hidden">
+<div class="panel">
+<h1 class="panel-title">ПАУЗА</h1>
+<button id="btn-resume" class="menu-btn primary">ПРОДОЛЖИТЬ</button>
+<button id="btn-restart" class="menu-btn">ЗАНОВО</button>
+<button id="btn-to-menu" class="menu-btn">В ГЛАВНОЕ МЕНЮ</button>
+</div>
+</div>
+<div id="gameover-menu" class="overlay hidden">
+<div class="panel">
+<h1 class="panel-title danger">СМЕНА ОКОНЧЕНА</h1>
+<div id="go-newrecord" class="newrecord hidden">НОВЫЙ РЕКОРД!</div>
+<div class="go-score"><span>СЧЁТ</span><span id="go-score">0</span></div>
+<div class="stats">
+<div><span>ВРЕМЯ</span><span id="go-time">0с</span></div>
+<div><span>КОМЕТ УНИЧТОЖЕНО</span><span id="go-comets">0</span></div>
+<div><span>БОССОВ УБИТО</span><span id="go-bosses">0</span></div>
+<div><span>МАКС. КОМБО</span><span id="go-combo">0</span></div>
+</div>
+<div id="go-unlock" class="unlock hidden"></div>
+<button id="btn-go-restart" class="menu-btn primary">ЕЩЁ РАЗ</button>
+<button id="btn-go-menu" class="menu-btn">В МЕНЮ</button>
+</div>
+</div>
+<div id="pause-btn" class="hidden">
+<svg viewBox="0 0 24 24" width="24" height="24"><rect x="6" y="4" width="4" height="16" fill="#d7a54a"/><rect x="14" y="4" width="4" height="16" fill="#d7a54a"/></svg>
+</div>
+<div id="boostBtn" class="hidden">
+<svg viewBox="0 0 40 40" width="40" height="40"><polygon points="20,4 32,20 24,20 24,36 16,36 16,20 8,20" fill="#d7a54a" opacity="0.85"/></svg>
+</div>
+<div id="joystick-zone" class="hidden mode-float">
+<div id="joystick-base"><div id="joystick-knob"></div></div>
+</div>
+<div id="crt"></div>
+<script src="script.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+// === КНОПКА УСТАНОВКИ (PWA) ===
+(function(){
+  let deferredPrompt = null;
+  const btn = document.getElementById('btn-install');
+  if (!btn) return;
+
+  // Chrome / Edge / Android — браузер сам предлагает установку
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    btn.classList.remove('hidden');
+  });
+
+  btn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    btn.classList.add('hidden');
+  });
+
+  // Когда установка завершилась (или уже была установлена ранее)
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    btn.classList.add('hidden');
+  });
+
+  // Уже установлена как приложение — не показываем
+  if (window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true) {
+    btn.classList.add('hidden');
+  }
+})();
+</script>
+</body>
+</html>
